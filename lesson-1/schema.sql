@@ -49,22 +49,22 @@ CREATE TABLE rent_list (
     client_id int not null,
     -- Из связанной таблицы (item) выбираем вещь которую клиент берёт в аренду.
     item_id int not null,
-    -- Из связанной таблицы (item), а она в свою очередь из связанной таблицы rent_price устанавливаем подходящий вариант аренды (с оплатой по часам, по дням и т.д.)
+    -- В это поле записывается информация о стоимости единицы аренды через связанную таблицу (item), а она в свою очередь из берёт информацию из
+    -- связанной таблицы rent_price где выбран подходящий вариант аренды (с оплатой по часам, по дням и т.д.)
     rent_price int not null,
     -- В этом поле устанавливаем срок на который оформляется аренда. 
     duration int not null,
     -- В это поле расчитывается и записывается информация о стоимости аренды.
     rental_amount int not null,
     -- В это поле записывается дата и время начала аренды.
-    start_at timestamp not null,
+    start_rent_at timestamp not null,
     -- В это поле записывается информация о фактической дате и времени завершения аренды.
     -- И мы можем его сравнить с датой и временем из таблицы (item поле expires_at) когда должна была завершиться аренда.
-    end_at timestamp,
+    end_rent_at timestamp,
     -- В это поле рассчитывается и заноситься информация о необходимости совершения доплаты если время аренды было превышено.
     surcharge int,
 
     CONSTRAINT rent_list_client_id FOREIGN KEY (client_id) REFERENCES client (id),
-    CONSTRAINT rent_list_item_id FOREIGN KEY (item_id) REFERENCES item (id),
-    -- Эту связь не удалось добавить.
-    CONSTRAINT rent_list_rent_price_item FOREIGN KEY (rent_price) REFERENCES item ("rent_price_id", "price")
+    CONSTRAINT rent_list_item_id FOREIGN KEY (item_id) REFERENCES item (id)
+    
 );
