@@ -37,6 +37,8 @@ CREATE TABLE item (
     rent_price_id int not null,
     -- В это поле записывается информация о том когда (дата и время) должна закончиться аренда.
     expires_at datetime
+
+    CONSTRAINT item_rent_price_id FOREIGN KEY (rent_price_id) REFERENCES rent_price (id) ON DELETE cascade
 );
 
 
@@ -47,7 +49,7 @@ CREATE TABLE rent_list (
     -- Из связанной таблицы (item) выбираем вещь которую клиент берёт в аренду.
     item_id int not null,
     -- Из связанной таблицы (rent_price) выбираем подходящий вариант аренды (с оплатой по часам, по дням и т.д.)
-    rent_price_id int not null,
+    rent_price int not null,
     -- В этом поле устанавливаем срок на который оформляется аренда. 
     duration int not null,
     -- В это поле расчитывается и записывается информация о стоимости аренды.
@@ -59,4 +61,8 @@ CREATE TABLE rent_list (
     end_at datetime,
     -- В это поле рассчитывается и заноситься информация о необходимости совершения доплаты если время аренды было превышено.
     surcharge int
+
+    CONSTRAINT rent_list_client_id FOREIGN KEY (client_id) REFERENCES client (id),
+    CONSTRAINT rent_list_item_id FOREIGN KEY (item_id) REFERENCES item (id),
+    CONSTRAINT rent_list_rent_price_item FOREIGN KEY (rent_price) REFERENCES item ("rent_price_id", "price")
 );
