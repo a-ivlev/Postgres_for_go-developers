@@ -16,15 +16,15 @@ psql -U manager -d rental_db
 SQL-запрос на создание таблицы добавить в текстовый файл class1_hometask.txt.
 create table clients (
 id serial not null unique,
-first_name varchar(255) not null,
-last_name varchar(255) not null,
-middle_name varchar(255),
-phone varchar(255) not null,
+first_name varchar(50) not null,
+middle_name varchar(50),
+last_name varchar(50) not null,
+phone varchar(20) not null,
 registered_at timestamp default now());
 
 4. В таблицу из пункта 3 вставить не менее трёх строк. SQL-запрос на вставку добавить в текстовый файл class1_hometask.txt.
 insert into clients (first_name, last_name, phone, registered_at) values ('Иванов', 'Иван', '+79005553535', now()), ('Семёнов', 'Семён', '+79005575775', now());
-insert into clients (first_name, last_name, middle_name, phone, registered_at) values ('Сидоров', 'Владимир', 'Петрович', '+79005223335', now());
+insert into clients (first_name, middle_name, last_name, phone, registered_at) values ('Владимир', 'Петрович', 'Сидоров', '+79005223335', now());
 
 5. Используя мета-команды psql, вывести список всех сущностей в базе данных из пункта 2.
 Полученный список сущностей добавить в текстовый файл class1_hometask.txt.
