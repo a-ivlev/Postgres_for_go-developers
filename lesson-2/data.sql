@@ -265,3 +265,10 @@ VALUES
     (1, 4, 16, 3, 12000),
     (4, 1, 1, 3, 150),
     (2, 2, 7, 1, 1250);
+
+И обновим информацию в таблице item в колонке  expires_at когда должна будет закончиться аренда.
+
+UPDATE item SET expires_at = timestamp '2021-07-14 08:02:43.726234' WHERE id = 8;
+UPDATE item SET expires_at = timestamp '2021-10-12 08:02:43.726234' WHERE id = 4;
+UPDATE item SET expires_at = timestamp '2021-07-12 11:02:43.726234' WHERE id = 1;
+UPDATE item SET expires_at = timestamp '2021-07-19 08:02:43.726234' WHERE id = 2;
