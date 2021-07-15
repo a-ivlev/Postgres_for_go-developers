@@ -1,0 +1,86 @@
+Сделаем запросы до добавления индексов и заполнения БД моками. В БД находятся данные записаные вручную.
+
+Проанализируем запрос на поиск информации о том что сейчас оформлено в аренду и когда эту вещь должны вернуть.
+
+explain select rent_list.id, client.first_name, client.last_name, item.id, item.name, rent_price.name as rental, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, item.expires_at from rent_list
+join client ON rent_list.client_id = client.id
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id;
+
+Получили следующий результат.
+
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Hash Join  (cost=40.12..70.52 rows=1130 width=1300)
+   Hash Cond: (rent_list.rent_price_id = rent_price.id)
+   ->  Hash Join  (cost=26.98..54.34 rows=1130 width=788)
+         Hash Cond: (rent_list.item_id = item.id)
+         ->  Hash Join  (cost=14.05..38.38 rows=1130 width=264)
+               Hash Cond: (rent_list.client_id = client.id)
+               ->  Seq Scan on rent_list  (cost=0.00..21.30 rows=1130 width=32)
+               ->  Hash  (cost=11.80..11.80 rows=180 width=240)
+                     ->  Seq Scan on client  (cost=0.00..11.80 rows=180 width=240)
+         ->  Hash  (cost=11.30..11.30 rows=130 width=528)
+               ->  Seq Scan on item  (cost=0.00..11.30 rows=130 width=528)
+   ->  Hash  (cost=11.40..11.40 rows=140 width=520)
+         ->  Seq Scan on rent_price  (cost=0.00..11.40 rows=140 width=520)
+(13 rows)
+
+
+Проанализируем запрос на поиск информации по по номеру телефона клиента и узнаем что взял в аренду данный клиент.
+
+explain select rent_list.id, client.first_name, client.last_name, item.id, item.name, rent_price.name as rental, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, item.expires_at from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE client.phone = '+7 411 923 8377';
+
+Получили следующий результат.
+
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
+ Nested Loop  (cost=12.55..39.06 rows=6 width=1300)
+   ->  Nested Loop  (cost=12.41..37.83 rows=6 width=788)
+         ->  Hash Join  (cost=12.26..36.60 rows=6 width=264)
+               Hash Cond: (rent_list.client_id = client.id)
+               ->  Seq Scan on rent_list  (cost=0.00..21.30 rows=1130 width=32)
+               ->  Hash  (cost=12.25..12.25 rows=1 width=240)
+                     ->  Seq Scan on client  (cost=0.00..12.25 rows=1 width=240)
+                           Filter: ((phone)::text = '+7 411 923 8377'::text)
+         ->  Index Scan using item_id_key on item  (cost=0.14..0.20 rows=1 width=528)
+               Index Cond: (id = rent_list.item_id)
+   ->  Index Scan using rent_price_id_key on rent_price  (cost=0.14..0.20 rows=1 width=520)
+         Index Cond: (id = rent_list.rent_price_id)
+(12 rows)
+
+
+Проанализируем запрос на поиск тех кто не вернул вовремя взятую в аренду вещь.
+
+explain select rent_list.id, client.first_name, client.last_name, item.id, item.name, rent_price.name as rental, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, item.expires_at, now() as now from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE item.expires_at < now();
+
+Получили следующий результат.
+
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Hash Join  (cost=39.69..66.96 rows=374 width=1308)
+   Hash Cond: (rent_list.rent_price_id = rent_price.id)
+   ->  Hash Join  (cost=26.54..51.87 rows=374 width=788)
+         Hash Cond: (rent_list.client_id = client.id)
+         ->  Hash Join  (cost=12.49..36.82 rows=374 width=556)
+               Hash Cond: (rent_list.item_id = item.id)
+               ->  Seq Scan on rent_list  (cost=0.00..21.30 rows=1130 width=32)
+               ->  Hash  (cost=11.95..11.95 rows=43 width=528)
+                     ->  Seq Scan on item  (cost=0.00..11.95 rows=43 width=528)
+                           Filter: (expires_at < now())
+         ->  Hash  (cost=11.80..11.80 rows=180 width=240)
+               ->  Seq Scan on client  (cost=0.00..11.80 rows=180 width=240)
+   ->  Hash  (cost=11.40..11.40 rows=140 width=520)
+         ->  Seq Scan on rent_price  (cost=0.00..11.40 rows=140 width=520)
+(14 rows)
+
+
+Запросы с индексами сделать не могу т.к. постаил БД на заполнение моками и она сутки уже работает. Прервать обработку не решаюсь пока. Заполню позже и добавлю коммитом.
