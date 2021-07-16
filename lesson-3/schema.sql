@@ -72,6 +72,9 @@ CREATE TABLE rent_list (
 
 Предлагаю создать следующие индексы:
 Для более быстрого поиска клиента по номеру телефона
-CREATE INDEX concurrently client_idx on client using btree (last_name text_pattern_ops) INCLUDE (phone);
+CREATE INDEX concurrently client_phone_idx on client using btree (phone);
+
+Для аналитики, чтобы иметь возможность анализировать сколько вещей оформлено в аренду в определённый промежуток времени.
+CREATE INDEX concurrently rent_list_start_rent_end_rent_idx on rent_list (start_rent_at, end_rent_at);
 
 

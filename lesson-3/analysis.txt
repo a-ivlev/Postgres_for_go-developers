@@ -1,30 +1,25 @@
 Сделаем запросы до добавления индексов и заполнения БД моками. В БД находятся данные записаные вручную.
 
-Проанализируем запрос на поиск информации о том что сейчас оформлено в аренду и когда эту вещь должны вернуть.
 
-explain select rent_list.id, client.first_name, client.last_name, item.id, item.name, rent_price.name as rental, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, item.expires_at from rent_list
-join client ON rent_list.client_id = client.id
-join item ON rent_list.item_id = item.id
-join rent_price ON rent_list.rent_price_id = rent_price.id;
+Проанализируем запрос на поиск клиента по номеру телефона клиента.
+
+explain analyze select * from client WHERE phone = '+7 411 923 8377';
+
 
 Получили следующий результат.
 
-                                    QUERY PLAN                                     
------------------------------------------------------------------------------------
- Hash Join  (cost=40.12..70.52 rows=1130 width=1300)
-   Hash Cond: (rent_list.rent_price_id = rent_price.id)
-   ->  Hash Join  (cost=26.98..54.34 rows=1130 width=788)
-         Hash Cond: (rent_list.item_id = item.id)
-         ->  Hash Join  (cost=14.05..38.38 rows=1130 width=264)
-               Hash Cond: (rent_list.client_id = client.id)
-               ->  Seq Scan on rent_list  (cost=0.00..21.30 rows=1130 width=32)
-               ->  Hash  (cost=11.80..11.80 rows=180 width=240)
-                     ->  Seq Scan on client  (cost=0.00..11.80 rows=180 width=240)
-         ->  Hash  (cost=11.30..11.30 rows=130 width=528)
-               ->  Seq Scan on item  (cost=0.00..11.30 rows=130 width=528)
-   ->  Hash  (cost=11.40..11.40 rows=140 width=520)
-         ->  Seq Scan on rent_price  (cost=0.00..11.40 rows=140 width=520)
-(13 rows)
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..7447.81 rows=1 width=183) (actual time=0.336..29.762 rows=1 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on client  (cost=0.00..6447.71 rows=1 width=183) (actual time=14.479..23.689 rows=0 loops=3)
+         Filter: ((phone)::text = '+7 411 923 8377'::text)
+         Rows Removed by Filter: 66669
+ Planning Time: 0.088 ms
+ Execution Time: 29.789 ms
+(8 rows)
+
 
 
 Проанализируем запрос на поиск информации по по номеру телефона клиента и узнаем что взял в аренду данный клиент.
@@ -83,4 +78,247 @@ WHERE item.expires_at < now();
 (14 rows)
 
 
-Запросы с индексами сделать не могу т.к. постаил БД на заполнение моками и она сутки уже работает. Прервать обработку не решаюсь пока. Заполню позже и добавлю коммитом.
+
+
+Проанализируем запрос на поиск клиентов кто взял и вернул вещь в июле месяце 2021 года.
+
+explain analyze select rent_list.id, client.first_name, client.last_name, item.name, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, rent_list.end_rent_at from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE rent_list.start_rent_at::DATE >= '2021-07-01' AND rent_list.start_rent_at::DATE <= '2021-07-30' AND rent_list.end_rent_at::DATE >= '2021-07-01' AND rent_list.end_rent_at::DATE <= '2021-07-30';
+
+
+Получили следующий результат.
+
+                                                                        QUERY PLAN                                       
+                                                                       
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=1000.99..23561.51 rows=1 width=386) (actual time=127.882..131.746 rows=0 loops=1)
+   ->  Gather  (cost=1000.84..23559.40 rows=1 width=390) (actual time=127.881..131.743 rows=0 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Nested Loop  (cost=0.84..22559.30 rows=1 width=390) (actual time=122.128..122.130 rows=0 loops=3)
+               ->  Nested Loop  (cost=0.42..22542.43 rows=2 width=136) (actual time=120.391..122.115 rows=0 loops=3)
+                     ->  Parallel Seq Scan on rent_list  (cost=0.00..22458.05 rows=10 width=40) (actual time=16.283..122.013 rows=5 loops=3)
+                           Filter: (((start_rent_at)::date >= '2021-07-01'::date) AND ((start_rent_at)::date <= '2021-07-30'::date) AND ((end_rent_at)::date >= '2021-07-01'::date) AND ((end_rent_at)::date <= '2021-07-30'::date))
+                           Rows Removed by Filter: 333330
+                     ->  Index Scan using client_id_key on client  (cost=0.42..8.44 rows=1 width=104) (actual time=0.016..0.016 rows=0 loops=15)
+                           Index Cond: (id = rent_list.client_id)
+               ->  Index Scan using item_id_key on item  (cost=0.42..8.44 rows=1 width=262) (actual time=0.038..0.038 rows=0 loops=1)
+                     Index Cond: (id = rent_list.item_id)
+   ->  Index Only Scan using rent_price_id_key on rent_price  (cost=0.14..2.08 rows=1 width=4) (never executed)
+         Index Cond: (id = rent_list.rent_price_id)
+         Heap Fetches: 0
+ Planning Time: 0.560 ms
+ Execution Time: 131.819 ms
+(18 rows)
+
+
+
+Проанализируем запрос на поиск клиентов кто взял или вернул вещь в июле месяце 2021 года.
+
+explain analyze select rent_list.id, client.first_name, client.last_name, item.name, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, rent_list.end_rent_at from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE rent_list.start_rent_at::DATE >= '2021-07-01' AND rent_list.start_rent_at::DATE <= '2021-07-30' OR rent_list.end_rent_at::DATE >= '2021-07-01' AND rent_list.end_rent_at::DATE <= '2021-07-30';
+
+Получили следующий результат.
+
+                                                                                                                  QUERY PLAN                                  
+                                                                                
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=23523.57..33432.47 rows=343 width=386) (actual time=186.410..191.187 rows=5 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Hash Join  (cost=22523.57..32398.17 rows=143 width=386) (actual time=173.315..181.789 rows=2 loops=3)
+         Hash Cond: (rent_list.rent_price_id = rent_price.id)
+         ->  Nested Loop  (cost=22510.42..32384.65 rows=143 width=390) (actual time=173.179..181.646 rows=2 loops=3)
+               ->  Parallel Hash Join  (cost=22510.00..29065.64 rows=902 width=136) (actual time=160.315..181.431 rows=37 loops=3)
+                     Hash Cond: (client.id = rent_list.client_id)
+                     ->  Parallel Seq Scan on client  (cost=0.00..6239.37 rows=83337 width=104) (actual time=0.032..12.283 rows=66670 loops=3)
+                     ->  Parallel Hash  (cost=22458.05..22458.05 rows=4156 width=40) (actual time=158.425..158.425 rows=2761 loops=3)
+                           Buckets: 16384  Batches: 1  Memory Usage: 832kB
+                           ->  Parallel Seq Scan on rent_list  (cost=0.00..22458.05 rows=4156 width=40) (actual time=0.096..157.010 rows=2761 loops=3)
+                                 Filter: ((((start_rent_at)::date >= '2021-07-01'::date) AND ((start_rent_at)::date <= '2021-07-30'::date)) OR (((end_rent_at)::date >= '2021-07-01'::date) AND ((end_rent_at)::date <= '2021-07-30'::date)))
+                                 Rows Removed by Filter: 330573
+               ->  Index Scan using item_id_key on item  (cost=0.42..3.68 rows=1 width=262) (actual time=0.004..0.004 rows=0 loops=111)
+                     Index Cond: (id = rent_list.item_id)
+         ->  Hash  (cost=11.40..11.40 rows=140 width=4) (actual time=0.052..0.056 rows=40 loops=3)
+               Buckets: 1024  Batches: 1  Memory Usage: 10kB
+               ->  Seq Scan on rent_price  (cost=0.00..11.40 rows=140 width=4) (actual time=0.024..0.036 rows=40 loops=3)
+ Planning Time: 0.652 ms
+ Execution Time: 191.253 ms
+(21 rows)
+
+
+
+
+Добавили 2 индекса в таблице clien проиндексировали поле phone и в таблице rent_list добавили мультииндекс на поля start_rent_at и end_rent_at.
+Теперь снова повторим наши запросы к БД и посмотрим на время выполнения.
+
+
+
+Проанализируем запрос на поиск клиента по номеру телефона клиента.
+
+explain analyze select * from client WHERE phone = '+7 411 923 8377';
+
+
+Получили следующий результат.
+
+                                                        QUERY PLAN                                                         
+---------------------------------------------------------------------------------------------------------------------------
+ Index Scan using client_phone_idx on client  (cost=0.42..8.44 rows=1 width=183) (actual time=0.033..0.035 rows=1 loops=1)
+   Index Cond: ((phone)::text = '+7 411 923 8377'::text)
+ Planning Time: 0.123 ms
+ Execution Time: 0.061 ms
+(4 rows)
+
+
+Был такой результат 
+Planning Time: 0.088 ms
+Execution Time: 29.789 ms
+
+После добавления индекса на поле phone
+Planning Time: 0.123 ms
+Execution Time: 0.061 ms
+
+
+Проанализируем запрос на поиск информации по по номеру телефона клиента и узнаем что взял в аренду данный клиент.
+
+explain select rent_list.id, client.first_name, client.last_name, item.id, item.name, rent_price.name as rental, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, item.expires_at from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE client.phone = '+7 411 923 8377';
+
+Получили следующий результат.
+
+
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.98..24.21 rows=1 width=906)
+   ->  Nested Loop  (cost=0.84..17.97 rows=1 width=394)
+         ->  Nested Loop  (cost=0.42..9.53 rows=1 width=128)
+               Join Filter: (rent_list.client_id = client.id)
+               ->  Index Scan using client_phone_idx on client  (cost=0.42..8.44 rows=1 width=104)
+                     Index Cond: ((phone)::text = '+7 411 923 8377'::text)
+               ->  Seq Scan on rent_list  (cost=0.00..1.04 rows=4 width=32)
+         ->  Index Scan using item_id_key on item  (cost=0.42..8.44 rows=1 width=270)
+               Index Cond: (id = rent_list.item_id)
+   ->  Index Scan using rent_price_id_key on rent_price  (cost=0.14..6.16 rows=1 width=520)
+         Index Cond: (id = rent_list.rent_price_id)
+(11 rows)
+
+Был такой результат 
+Nested Loop  (cost=12.55..39.06 rows=6 width=1300)
+
+После добавления индекса на поле phone
+Nested Loop  (cost=0.98..24.21 rows=1 width=906)
+
+
+размер client_phone_idx индекса составляет почти 8 Мб.
+                                     List of relations
+ Schema |       Name       | Type  |  Owner  | Table  | Persistence |  Size   | Description 
+--------+------------------+-------+---------+--------+-------------+---------+-------------
+ public | client_phone_idx | index | manager | client | permanent   | 7960 kB | 
+(1 row)
+
+
+После анализа двух запросов очевидно что добавление индекса оправдано.
+
+
+
+Проанализируем запрос на поиск клиентов кто взял и вернул вещь в июле месяце 2021 года.
+
+explain analyze select rent_list.id, client.first_name, client.last_name, item.name, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, rent_list.end_rent_at from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE rent_list.start_rent_at::DATE >= '2021-07-01' AND rent_list.start_rent_at::DATE <= '2021-07-30' AND rent_list.end_rent_at::DATE >= '2021-07-01' AND rent_list.end_rent_at::DATE <= '2021-07-30';
+
+
+Получили следующий результат.
+
+                                                                                                          QUERY PLAN                                          
+                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.98..26.27 rows=1 width=386) (actual time=0.027..0.028 rows=0 loops=1)
+   ->  Nested Loop  (cost=0.84..18.00 rows=1 width=390) (actual time=0.027..0.027 rows=0 loops=1)
+         ->  Nested Loop  (cost=0.42..9.56 rows=1 width=136) (actual time=0.026..0.027 rows=0 loops=1)
+               ->  Seq Scan on rent_list  (cost=0.00..1.12 rows=1 width=40) (actual time=0.026..0.026 rows=0 loops=1)
+                     Filter: (((start_rent_at)::date >= '2021-07-01'::date) AND ((start_rent_at)::date <= '2021-07-30'::date) AND ((end_rent_at)::date >= '2021-07-01'::date) AND ((end_rent_at)::date <= '2021-07-30'::date))
+                     Rows Removed by Filter: 4
+               ->  Index Scan using client_id_key on client  (cost=0.42..8.44 rows=1 width=104) (never executed)
+                     Index Cond: (id = rent_list.client_id)
+         ->  Index Scan using item_id_key on item  (cost=0.42..8.44 rows=1 width=262) (never executed)
+               Index Cond: (id = rent_list.item_id)
+   ->  Index Only Scan using rent_price_id_key on rent_price  (cost=0.14..8.16 rows=1 width=4) (never executed)
+         Index Cond: (id = rent_list.rent_price_id)
+         Heap Fetches: 0
+ Planning Time: 0.442 ms
+ Execution Time: 0.090 ms
+(15 rows)
+
+Был такой результат 
+Planning Time: 0.560 ms
+Execution Time: 131.819 ms
+
+После добавления мультииндеса на поля start_rent_at и end_rent_at получили следующий результат
+Planning Time: 0.442 ms
+Execution Time: 0.090 ms
+
+
+
+Проанализируем запрос на поиск клиентов кто взял или вернул вещь в июле месяце 2021 года.
+
+explain analyze select rent_list.id, client.first_name, client.last_name, item.name, rent_list.duration,  rent_list.rental_amount, rent_list.start_rent_at, rent_list.end_rent_at from rent_list 
+join client ON rent_list.client_id = client.id 
+join item ON rent_list.item_id = item.id
+join rent_price ON rent_list.rent_price_id = rent_price.id
+WHERE rent_list.start_rent_at::DATE >= '2021-07-01' AND rent_list.start_rent_at::DATE <= '2021-07-30' OR rent_list.end_rent_at::DATE >= '2021-07-01' AND rent_list.end_rent_at::DATE <= '2021-07-30';
+
+
+Получили следующий результат.
+
+
+                                                                                                            QUERY PLAN                                        
+                                                                    
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.98..26.27 rows=1 width=386) (actual time=0.240..0.309 rows=4 loops=1)
+   ->  Nested Loop  (cost=0.84..18.00 rows=1 width=390) (actual time=0.167..0.221 rows=4 loops=1)
+         ->  Nested Loop  (cost=0.42..9.56 rows=1 width=136) (actual time=0.095..0.123 rows=4 loops=1)
+               ->  Seq Scan on rent_list  (cost=0.00..1.12 rows=1 width=40) (actual time=0.021..0.027 rows=4 loops=1)
+                     Filter: ((((start_rent_at)::date >= '2021-07-01'::date) AND ((start_rent_at)::date <= '2021-07-30'::date)) OR (((end_rent_at)::date >= '2021-07-01'::date) AND ((end_rent_at)::date <= '2021-07-30'::date)))
+               ->  Index Scan using client_id_key on client  (cost=0.42..8.44 rows=1 width=104) (actual time=0.021..0.021 rows=1 loops=4)
+                     Index Cond: (id = rent_list.client_id)
+         ->  Index Scan using item_id_key on item  (cost=0.42..8.44 rows=1 width=262) (actual time=0.022..0.022 rows=1 loops=4)
+               Index Cond: (id = rent_list.item_id)
+   ->  Index Only Scan using rent_price_id_key on rent_price  (cost=0.14..8.16 rows=1 width=4) (actual time=0.020..0.020 rows=1 loops=4)
+         Index Cond: (id = rent_list.rent_price_id)
+         Heap Fetches: 4
+ Planning Time: 0.712 ms
+ Execution Time: 0.387 ms
+(14 rows)
+
+
+Был такой результат 
+Planning Time: 0.652 ms
+Execution Time: 191.253 ms
+
+После добавления мультииндеса на поля start_rent_at и end_rent_at получили следующий результат
+Planning Time: 0.712 ms
+Execution Time: 0.387 ms
+
+
+размер rent_list_start_rent_end_rent_idx индекса составляет 16 Кб.
+
+                                              List of relations
+ Schema |               Name                | Type  |  Owner  |   Table   | Persistence | Size  | Description 
+--------+-----------------------------------+-------+---------+-----------+-------------+-------+-------------
+ public | rent_list_start_rent_end_rent_idx | index | manager | rent_list | permanent   | 16 kB | 
+(1 row)
+
+
+Проанализировав 2 запроса к БД можно сказать что добавление индекса оправдано.
