@@ -1,0 +1,150 @@
+Общий размер который занимает на диске на БД
+
+root@3b7812da133d:/workdir# du -sh $PGDATA
+48M	/var/lib/postgresql/data
+
+Порядка 48 мегабайт.
+
+Более подробная информация о том, какая папка сколько занимает места
+root@3b7812da133d:/workdir# du -sh $PGDATA/*
+
+root@3b7812da133d:/workdir# du -sh $PGDATA/*
+31M	/var/lib/postgresql/data/base
+544K	/var/lib/postgresql/data/global
+4.0K	/var/lib/postgresql/data/pg_commit_ts
+4.0K	/var/lib/postgresql/data/pg_dynshmem
+8.0K	/var/lib/postgresql/data/pg_hba.conf
+4.0K	/var/lib/postgresql/data/pg_ident.conf
+16K	/var/lib/postgresql/data/pg_logical
+28K	/var/lib/postgresql/data/pg_multixact
+4.0K	/var/lib/postgresql/data/pg_notify
+4.0K	/var/lib/postgresql/data/pg_replslot
+4.0K	/var/lib/postgresql/data/pg_serial
+4.0K	/var/lib/postgresql/data/pg_snapshots
+4.0K	/var/lib/postgresql/data/pg_stat
+12K	/var/lib/postgresql/data/pg_stat_tmp
+12K	/var/lib/postgresql/data/pg_subtrans
+4.0K	/var/lib/postgresql/data/pg_tblspc
+4.0K	/var/lib/postgresql/data/pg_twophase
+4.0K	/var/lib/postgresql/data/PG_VERSION
+17M	/var/lib/postgresql/data/pg_wal
+12K	/var/lib/postgresql/data/pg_xact
+4.0K	/var/lib/postgresql/data/postgresql.auto.conf
+28K	/var/lib/postgresql/data/postgresql.conf
+4.0K	/var/lib/postgresql/data/postmaster.opts
+4.0K	/var/lib/postgresql/data/postmaster.pid
+root@3b7812da133d:/workdir# 
+
+Мы видим что наша основная директория (base) весит 31 мегабайт.
+
+Список таблиц
+
+rental_db=> \d+
+                                    List of relations
+ Schema |       Name        |   Type   |  Owner  | Persistence |    Size    | Description 
+--------+-------------------+----------+---------+-------------+------------+-------------
+ public | client            | table    | manager | permanent   | 8192 bytes | 
+ public | client_id_seq     | sequence | manager | permanent   | 8192 bytes | 
+ public | item              | table    | manager | permanent   | 48 kB      | 
+ public | item_id_seq       | sequence | manager | permanent   | 8192 bytes | 
+ public | rent_list         | table    | manager | permanent   | 8192 bytes | 
+ public | rent_list_id_seq  | sequence | manager | permanent   | 8192 bytes | 
+ public | rent_price        | table    | manager | permanent   | 8192 bytes | 
+ public | rent_price_id_seq | sequence | manager | permanent   | 8192 bytes | 
+(8 rows)
+
+rental_db=>
+
+Можем посмотреть сколько места на диске занимают индексы следующей командой
+
+rental_db=> \di+
+                                       List of relations
+ Schema |       Name        | Type  |  Owner  |   Table    | Persistence | Size  | Description 
+--------+-------------------+-------+---------+------------+-------------+-------+-------------
+ public | client_id_key     | index | manager | client     | permanent   | 16 kB | 
+ public | item_id_key       | index | manager | item       | permanent   | 16 kB | 
+ public | rent_list_id_key  | index | manager | rent_list  | permanent   | 16 kB | 
+ public | rent_price_id_key | index | manager | rent_price | permanent   | 16 kB | 
+(4 rows)
+
+rental_db=>
+
+Информация по таблице client с помощью full-scan запроса
+
+rental_db=> select count(1) as cnt from client;
+
+ cnt 
+-----
+   6
+(1 row) 
+
+Информация по таблице client в соответствии со статистикой, которую собирает Postgres;
+
+rental_db=> select reltuples::bigint as estimate from pg_class where oid = 'public.client'::regclass;
+
+ estimate 
+----------
+        0
+(1 row)
+
+rental_db=> 
+
+
+Информация по таблице item с помощью full-scan запроса
+
+rental_db=> select count(1) as cnt from item;
+
+ cnt 
+-----
+  10
+(1 row)
+
+
+Информация по таблице item в соответствии со статистикой, которую собирает Postgres;
+
+rental_db=> select reltuples::bigint as estimate from pg_class where oid = 'public.item'::regclass;
+
+ estimate 
+----------
+        0
+(1 row)
+
+
+Информация по таблице rent_price с помощью full-scan запроса
+
+rental_db=> select count(1) as cnt from rent_price;
+
+ cnt 
+-----
+  40
+(1 row)
+
+
+Информация по таблице rent_price в соответствии со статистикой, которую собирает Postgres;
+
+rental_db=> select reltuples::bigint as estimate from pg_class where oid = 'public.rent_price'::regclass;
+
+ estimate 
+----------
+        0
+(1 row)
+
+
+Информация по таблице rent_list с помощью full-scan запроса
+
+rental_db=> select count(1) as cnt from rent_list;
+
+  cnt 
+-----
+   4
+(1 row)
+
+
+Информация по таблице rent_list в соответствии со статистикой, которую собирает Postgres;
+
+rental_db=> select reltuples::bigint as estimate from pg_class where oid = 'public.rent_list'::regclass;
+
+ estimate 
+----------
+        0
+(1 row)
