@@ -1,0 +1,122 @@
+
+Используемый процессор Intel(R) Core(TM) i7 CPU 930 @ 2.80GHz
+
+количество ядер 8 виртуальных ядер
+
+Потоков на ядро:                 2
+Ядер на сокет:                   4
+Сокетов:                         1
+
+
+оперативной памяти 16 Гигабайт
+
+объём жесткого диска 512 Гигабайт
+
+пропускная способность сервера PostgreSQL
+
+max_connections 100
+
+
+
+Первый тест запустим, установив параметры MaxConns = MinConns = 1.
+
+SearchClientByPhone ищет клиента по номеру телефона.
+                                                          
+start attack
+duration: 10.187413427s
+threads: 1000
+queries: 49613
+QPS: 4961
+
+SearchRentItemsByPhone ищет клиентов которые взяли вещи в аренду и оринтировочный срок возврата. Если в качестве параметра передать номер телефона тогда получим информацию по конкретному клиенту.
+
+start attack
+duration: 10.252081494s
+threads: 1000
+queries: 35036
+QPS: 3503
+
+
+
+Теперь установим размер пула в 8 (установив параметры MaxConns = MinConns = 8)
+
+SearchClientByPhone ищет клиента по номеру телефона.
+
+stress-test go run main.go
+start attack
+duration: 10.17383329s
+threads: 1000
+queries: 131513
+QPS: 13151
+
+SearchRentItemsByPhone ищет клиентов которые взяли вещи в аренду и оринтировочный срок возврата. Если в качестве параметра передать номер телефона тогда получим информацию по конкретному клиенту.
+
+start attack
+duration: 10.095732261s
+threads: 1000
+queries: 91983
+QPS: 9198
+
+
+
+Теперь установим размер пула в 16 (установив параметры MaxConns = MinConns = 16)
+
+SearchClientByPhone ищет клиента по номеру телефона.
+
+stress-test go run main.go
+start attack
+duration: 10.102307521s
+threads: 1000
+queries: 150391
+QPS: 15039
+
+SearchRentItemsByPhone ищет клиентов которые взяли вещи в аренду и оринтировочный срок возврата. Если в качестве параметра передать номер телефона тогда получим информацию по конкретному клиенту.
+
+start attack
+duration: 10.067121986s
+threads: 1000
+queries: 114014
+QPS: 11401
+
+
+Теперь установим размер пула в 32 (установив параметры MaxConns = MinConns = 32)
+
+SearchClientByPhone ищет клиента по номеру телефона.
+
+stress-test go run main.go
+start attack
+duration: 10.044642463s
+threads: 1000
+queries: 176982
+QPS: 17698
+
+SearchRentItemsByPhone ищет клиентов которые взяли вещи в аренду и оринтировочный срок возврата. Если в качестве параметра передать номер телефона тогда получим информацию по конкретному клиенту.
+
+start attack
+duration: 10.123327513s
+threads: 1000
+queries: 118657
+QPS: 11865
+
+
+
+Теперь установим размер пула в 64 (установив параметры MaxConns = MinConns = 64)
+
+SearchClientByPhone ищет клиента по номеру телефона.
+
+stress-test go run main.go
+start attack
+duration: 10.038830584s
+threads: 1000
+queries: 235175
+QPS: 23517
+
+
+SearchRentItemsByPhone ищет клиентов которые взяли вещи в аренду и оринтировочный срок возврата. Если в качестве параметра передать номер телефона тогда получим информацию по конкретному клиенту.
+
+start attack
+duration: 10.068548623s
+threads: 1000
+queries: 119274
+QPS: 11927
+
