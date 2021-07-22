@@ -6,8 +6,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"postgre-dev-go/configs"
-	"postgre-dev-go/pkg/attack"
-	"time"
+	"postgre-dev-go/pkg/storage/postgresDB"
 )
 
 func main() {
@@ -20,14 +19,44 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	duration := time.Duration(10 * time.Second)
-	threads := 1000
-	fmt.Println("start attack")
-	res := attack.Attack(ctx, duration, threads, dbpool)
-	fmt.Println("duration:", res.Duration)
-	fmt.Println("threads:", res.Threads)
-	fmt.Println("queries:", res.QueriesPerformed)
-	qps := res.QueriesPerformed / uint64(res.Duration.Seconds())
-	fmt.Println("QPS:", qps)
+	db := postgresDB.NewPostgresDB(dbpool)
 
-}	
+	// Поиск клиента по номеру телефона
+	phone := "+79993452776"
+	client, err := db.SearchClientByPhone(ctx, phone)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+	}
+	fmt.Printf("Клиент с номером телефона %s\n %v", phone, client)
+
+	// Поиск клиента по фамилии
+	lastName := "Гришухин"
+	clients, err := db.SearchClientByLastName(ctx, lastName)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+	}
+	for i, client := range clients {
+		fmt.Printf("%d Клиент с фамилией %s %v\n", i+1, lastName, client)
+	}
+
+	// Если указываем в запросе номер телефона, получаем информацию по конкретному клиенту.
+	// Если в место номера телефона пустая строка, получаем информацию по всем клиентам оформившим аренду.
+	items, err := db.SearchRentItemsByPhone(ctx, "+7 411 923 8377")
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+	}
+	fmt.Println("Информация что находиться в аренде и у кого:")
+	for _, item := range items {
+		fmt.Println(item)
+	}
+
+	//Получает информацию из БД по клиентам кто не вернул арендованную вещь вовремя.
+	SearchClientsNotReturnItemsOnTime, err := db.SearchClientsNotReturnItemsOnTime(ctx)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+	}
+	fmt.Println("В аренде, но должны были уже вернуть.")
+	for _, client := range SearchClientsNotReturnItemsOnTime {
+		fmt.Println(client)
+	}
+}
