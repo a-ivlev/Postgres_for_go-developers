@@ -64,7 +64,7 @@ select rent_list.id, client.first_name, client.last_name, item.name, rent_list.d
 join client ON rent_list.client_id = client.id 
 join item ON rent_list.item_id = item.id
 join rent_price ON rent_list.rent_price_id = rent_price.id
-WHERE rent_list.start_rent_at::DATE >= '2021-07-01' AND rent_list.start_rent_at::DATE <= '2021-07-30' OR rent_list.end_rent_at::DATE >= '2021-07-01' AND rent_list.end_rent_at::DATE <= '2021-07-30';
+WHERE (rent_list.start_rent_at::DATE >= '2021-07-01' AND rent_list.start_rent_at::DATE <= '2021-07-30') OR (rent_list.end_rent_at::DATE >= '2021-07-01' AND rent_list.end_rent_at::DATE <= '2021-07-30');
 
    id   |                     first_name                     |                     last_name                      |                    name                            | duration | rental_amount |       start_rent_at        |     end_rent_at     
 --------+----------------------------------------------------+----------------------------------------------------+----------------------------------------------------+----------+---------------+----------------------------+---------------------
